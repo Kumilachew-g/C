@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+.env
+frontend/node_modules
+backend/node_modules
+frontend/dist
+backend/dist
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+

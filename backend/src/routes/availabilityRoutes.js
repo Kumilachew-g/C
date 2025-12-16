@@ -30,7 +30,7 @@ router.post(
 
 router.patch(
   '/:id',
-  authorizeRoles(ROLES.ADMIN, ROLES.COMMISSIONER, ROLES.SECRETARIAT),
+  authorizeRoles(ROLES.COMMISSIONER),
   validate([
     param('id').isUUID().withMessage('id must be UUID'),
     body('startTime').optional().isISO8601().withMessage('startTime must be ISO8601'),
@@ -41,7 +41,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  authorizeRoles(ROLES.ADMIN, ROLES.COMMISSIONER, ROLES.SECRETARIAT),
+  authorizeRoles(ROLES.COMMISSIONER),
   validate([param('id').isUUID().withMessage('id must be UUID')]),
   deleteSlot
 );

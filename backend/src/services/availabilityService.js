@@ -36,14 +36,29 @@ const checkOverlap = async (commissionerId, startTime, endTime, excludeId) => {
   }
 };
 
-const createSlot = async ({ commissionerId, startTime, endTime }) => {
+const createSlot = async ({ commissionerId, startTime, endTime }, user) => {
+  // If the caller is a commissioner, they may only create slots for themselves
+  if (user.role === ROLES.COMMISSIONER && user.id !== commissionerId) {
+    const error = new Error('Commissioners can only manage their own availability');
+    error.status = 403;
+    throw error;
+  }
+
   await ensureCommissionerExists(commissionerId);
   await checkOverlap(commissionerId, startTime, endTime);
   return AvailabilitySlot.create({ commissionerId, startTime, endTime });
 };
 
-const listSlots = async (commissionerId) => {
-  const where = commissionerId ? { commissionerId } : {};
+const listSlots = async (user, commissionerId) => {
+  let where = {};
+
+  if (commissionerId) {
+    where = { commissionerId };
+  } else if (user.role === ROLES.COMMISSIONER) {
+    // Commissioners see their own availability by default
+    where = { commissionerId: user.id };
+  }
+
   const slots = await AvailabilitySlot.findAll({
     where,
     order: [['startTime', 'ASC']],
@@ -56,13 +71,20 @@ const listSlots = async (commissionerId) => {
   }));
 };
 
-const updateSlot = async (id, payload) => {
+const updateSlot = async (id, payload, user) => {
   const slot = await AvailabilitySlot.findByPk(id);
   if (!slot) {
     const error = new Error('Slot not found');
     error.status = 404;
     throw error;
   }
+  // Only the owning commissioner may update a slot
+  if (user.role !== ROLES.COMMISSIONER || user.id !== slot.commissionerId) {
+    const error = new Error('Only the owning commissioner can update this availability slot');
+    error.status = 403;
+    throw error;
+  }
+
   const newStart = payload.startTime ?? slot.startTime;
   const newEnd = payload.endTime ?? slot.endTime;
   await checkOverlap(slot.commissionerId, newStart, newEnd, id);
@@ -72,13 +94,20 @@ const updateSlot = async (id, payload) => {
   return slot;
 };
 
-const deleteSlot = async (id) => {
+const deleteSlot = async (id, user) => {
   const slot = await AvailabilitySlot.findByPk(id);
   if (!slot) {
     const error = new Error('Slot not found');
     error.status = 404;
     throw error;
   }
+  // Only the owning commissioner may delete a slot
+  if (user.role !== ROLES.COMMISSIONER || user.id !== slot.commissionerId) {
+    const error = new Error('Only the owning commissioner can delete this availability slot');
+    error.status = 403;
+    throw error;
+  }
+
   await slot.destroy();
   return { id };
 };

@@ -15,6 +15,7 @@ const DashboardLayout = () => {
     { to: '/reports', label: 'Reports', roles: ROUTE_ROLES.reports },
     { to: '/users', label: 'Users', roles: ROUTE_ROLES.users },
     { to: '/notifications', label: 'Notifications', roles: ROUTE_ROLES.notifications },
+    { to: '/departments', label: 'Departments', roles: ['admin'] },
   ].filter((item) => item.roles.includes(user?.role || ''));
 
   const navLink = (to: string, label: string) => (

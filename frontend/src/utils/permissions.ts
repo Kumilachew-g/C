@@ -4,7 +4,7 @@ export const ROUTE_ROLES = {
   dashboard: ['admin', 'commissioner', 'secretariat', 'departmentUser', 'auditor'] as Role[],
   engagements: ['admin', 'commissioner', 'secretariat', 'departmentUser'] as Role[],
   availability: ['admin', 'commissioner', 'secretariat'] as Role[],
-  reports: ['admin', 'auditor'] as Role[],
+  reports: ['admin', 'auditor', 'secretariat'] as Role[],
   engagementRequest: ['admin', 'secretariat', 'departmentUser'] as Role[],
   calendar: ['commissioner'] as Role[],
   notifications: ['admin', 'commissioner', 'secretariat', 'departmentUser', 'auditor'] as Role[],

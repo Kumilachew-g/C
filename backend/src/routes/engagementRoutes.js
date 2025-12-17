@@ -15,7 +15,7 @@ router
   .route('/')
   .get(listEngagements)
   .post(
-    authorizeRoles(ROLES.ADMIN, ROLES.COMMISSIONER, ROLES.SECRETARIAT, ROLES.DEPARTMENT_USER),
+    authorizeRoles(ROLES.ADMIN, ROLES.SECRETARIAT, ROLES.DEPARTMENT_USER),
     validate([
       body('referenceNo').isString().isLength({ min: 3 }).withMessage('referenceNo required'),
       body('purpose').isString().isLength({ min: 5 }).withMessage('purpose required'),

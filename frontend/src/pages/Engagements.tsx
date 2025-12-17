@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
+import { useAuth } from '../hooks/useAuth';
+import { ROUTE_ROLES } from '../utils/permissions';
 import type { Engagement } from '../types';
 
 const Engagements = () => {
+  const { user } = useAuth();
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const canCreateEngagement = user?.role && ROUTE_ROLES.engagementRequest.includes(user.role);
 
   const load = async () => {
     setLoading(true);
@@ -28,9 +34,19 @@ const Engagements = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Engagements</h2>
-        <button className="px-3 py-2 rounded-md border border-slate-700 text-sm" onClick={load} disabled={loading}>
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {canCreateEngagement && (
+            <Link
+              to="/engagements/new"
+              className="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-sm font-semibold"
+            >
+              Create Engagement
+            </Link>
+          )}
+          <button className="px-3 py-2 rounded-md border border-slate-700 text-sm" onClick={load} disabled={loading}>
+            Refresh
+          </button>
+        </div>
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       {loading && <p className="text-sm text-slate-400">Loading...</p>}

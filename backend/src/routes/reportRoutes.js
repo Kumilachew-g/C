@@ -12,7 +12,7 @@ const { ROLES } = require('../utils/roles');
 
 const router = express.Router();
 
-router.use(authenticateToken, authorizeRoles(ROLES.ADMIN, ROLES.AUDITOR));
+router.use(authenticateToken, authorizeRoles(ROLES.ADMIN, ROLES.AUDITOR, ROLES.SECRETARIAT));
 
 router.get('/engagements/by-commissioner', getEngagementCountByCommissioner);
 

@@ -36,6 +36,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/departments', require('./routes/departmentRoutes'));
 
 app.use(errorHandler);
 

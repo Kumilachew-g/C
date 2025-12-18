@@ -1,5 +1,6 @@
 const { User, Role, CommissionerProfile } = require('../models');
 const { ROLES } = require('../utils/roles');
+const authService = require('../services/authService');
 
 const listUsers = async (_req, res, next) => {
   try {
@@ -71,5 +72,18 @@ const updateStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { listUsers, listCommissioners, updateStatus };
+const resetPassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    const result = await authService.resetPassword(id, password);
+    res.locals.entityId = result.id;
+    res.json({ id: result.id, message: 'Password reset successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { listUsers, listCommissioners, updateStatus, resetPassword };
 

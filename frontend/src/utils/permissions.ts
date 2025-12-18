@@ -5,6 +5,8 @@ export const ROUTE_ROLES = {
   engagements: ['admin', 'commissioner', 'secretariat', 'departmentUser'] as Role[],
   availability: ['admin', 'commissioner', 'secretariat'] as Role[],
   reports: ['admin', 'auditor', 'secretariat'] as Role[],
+  // Only Admin, Secretariat, and Department Users can create engagements
+  // Commissioners cannot create engagements - they only view and manage assigned ones
   engagementRequest: ['admin', 'secretariat', 'departmentUser'] as Role[],
   calendar: ['commissioner'] as Role[],
   notifications: ['admin', 'commissioner', 'secretariat', 'departmentUser', 'auditor'] as Role[],

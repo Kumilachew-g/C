@@ -14,6 +14,9 @@ const Users = () => {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
   const [form, setForm] = useState<{ fullName: string; email: string; password: string; roleName: Role }>({
     fullName: '',
     email: '',
@@ -143,6 +146,11 @@ const Users = () => {
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
+      {resetError && (
+        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/40 rounded-md px-3 py-2">
+          {resetError}
+        </p>
+      )}
       <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
         <table className="min-w-full text-xs">
           <thead className="bg-slate-900 text-slate-300">
@@ -176,12 +184,68 @@ const Users = () => {
                   {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}
                 </td>
                 <td className="py-2 px-3 text-right">
-                  <button
-                    onClick={() => toggleStatus(u)}
-                    className="px-3 py-1 rounded-md border border-slate-700 text-xs hover:bg-slate-800"
-                  >
-                    {u.status === 'active' ? 'Disable' : 'Activate'}
-                  </button>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => toggleStatus(u)}
+                        className="px-3 py-1 rounded-md border border-slate-700 text-xs hover:bg-slate-800"
+                      >
+                        {u.status === 'active' ? 'Disable' : 'Activate'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setResetError(null);
+                          setResetPasswordValue('');
+                          setResettingId(u.id);
+                        }}
+                        className="px-3 py-1 rounded-md border border-indigo-600 text-xs text-indigo-200 hover:bg-indigo-600/10"
+                      >
+                        Reset password
+                      </button>
+                    </div>
+                    {resettingId === u.id && (
+                      <div className="mt-1 flex items-center justify-end gap-2">
+                        <input
+                          type="password"
+                          className="w-40 rounded-md border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="New password (min 8 chars)"
+                          value={resetPasswordValue}
+                          onChange={(e) => setResetPasswordValue(e.target.value)}
+                        />
+                        <button
+                          className="px-3 py-1 rounded-md bg-indigo-600 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+                          disabled={!resetPasswordValue || resetPasswordValue.length < 8}
+                          onClick={async () => {
+                            try {
+                              setResetError(null);
+                              await api.post(`/users/${u.id}/reset-password`, {
+                                password: resetPasswordValue,
+                              });
+                              setResettingId(null);
+                              setResetPasswordValue('');
+                              alert('Password reset successfully.');
+                            } catch (err: any) {
+                              const msg =
+                                err?.response?.data?.message ||
+                                'Failed to reset password. Please try again.';
+                              setResetError(msg);
+                            }
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="px-3 py-1 rounded-md border border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+                          onClick={() => {
+                            setResettingId(null);
+                            setResetPasswordValue('');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

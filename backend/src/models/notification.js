@@ -17,6 +17,23 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING(500),
         allowNull: false,
       },
+      type: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'Type of notification (engagement_created, engagement_assigned, etc.)',
+      },
+      metadata: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'JSON metadata for the notification',
+        get() {
+          const value = this.getDataValue('metadata');
+          return value ? JSON.parse(value) : null;
+        },
+        set(value) {
+          this.setDataValue('metadata', value ? JSON.stringify(value) : null);
+        },
+      },
       isRead: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
@@ -29,6 +46,8 @@ module.exports = (sequelize) =>
       indexes: [
         { fields: ['userId'] },
         { fields: ['isRead'] },
+        { fields: ['type'] },
+        { fields: ['createdAt'] },
       ],
     }
   );

@@ -51,6 +51,9 @@ AvailabilitySlot.belongsTo(User, { foreignKey: 'commissionerId', as: 'Commission
 Engagement.hasMany(Document, { foreignKey: 'engagementId' });
 Document.belongsTo(Engagement, { foreignKey: 'engagementId' });
 
+Department.hasMany(Engagement, { foreignKey: 'requestingUnitId', as: 'RequestedEngagements' });
+Engagement.belongsTo(Department, { foreignKey: 'requestingUnitId', as: 'RequestingUnit' });
+
 User.hasMany(Notification, { foreignKey: 'userId' });
 Notification.belongsTo(User, { foreignKey: 'userId' });
 

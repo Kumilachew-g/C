@@ -36,10 +36,19 @@ Configure `VITE_API_URL` in a `.env` file (e.g., `http://localhost:4000/api`).
 - `POST /api/auth/register` – create user (role defaults to officer)
 - `POST /api/auth/login`
 - `GET /api/engagements` – list engagements (restricted by role)
-- `POST /api/engagements` – create (admin/commissioner/officer)
-- `PATCH /api/engagements/:id/status` – update status (admin/commissioner/officer)
+- `POST /api/engagements` – create (admin, secretariat, departmentUser only)
+- `PATCH /api/engagements/:id/status` – update status (admin, commissioner, secretariat)
 - `GET /api/users` – list users (admin/commissioner)
 - `PATCH /api/users/:id/status` – set status (admin)
+
+## Role-based permissions
+
+### Engagement Creation
+- **System Administrator (admin)**: Can create engagements
+- **Secretariat / Commissioner Assistant**: Can create engagements
+- **Department User (Internal)**: Can create engagement requests
+- **Commissioner**: **CANNOT** create engagements (only views and manages assigned ones)
+- **Auditor**: Read-only access, cannot create engagements
 
 ## Security & auditing
 - JWT authentication with bcrypt-hashed passwords.

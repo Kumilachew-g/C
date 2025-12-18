@@ -20,10 +20,23 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
+    
+    // Handle 401 Unauthorized - try to refresh token
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshToken) throw error;
+      
+      if (!refreshToken) {
+        // No refresh token, redirect to login
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        throw error;
+      }
+      
       try {
         const { data } = await api.post('/auth/refresh', { refreshToken });
         localStorage.setItem(ACCESS_TOKEN_KEY, data.token);
@@ -31,12 +44,27 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.token}`;
         return api(original);
       } catch (refreshErr) {
+        // Refresh failed, clear storage and redirect to login
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.removeItem(REFRESH_TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         throw refreshErr;
       }
     }
+    
+    // Handle network errors
+    if (!error.response) {
+      error.message = 'Network error. Please check your connection and try again.';
+    }
+    
+    // Handle server errors (500+)
+    if (error.response?.status >= 500) {
+      error.message = 'Server error. Please try again later.';
+    }
+    
     throw error;
   }
 );

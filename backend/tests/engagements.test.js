@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 
 describe('Engagements API', () => {
   let adminToken;
+  let commissionerToken;
   let commissioner;
 
   beforeAll(async () => {
@@ -58,11 +59,18 @@ describe('Engagements API', () => {
 
     commissioner = comm;
 
-    const loginRes = await request(app).post('/api/auth/login').send({
-      email: admin.email,
-      password,
-    });
-    adminToken = loginRes.body.token;
+    const [adminLoginRes, commLoginRes] = await Promise.all([
+      request(app).post('/api/auth/login').send({
+        email: admin.email,
+        password,
+      }),
+      request(app).post('/api/auth/login').send({
+        email: comm.email,
+        password,
+      }),
+    ]);
+    adminToken = adminLoginRes.body.token;
+    commissionerToken = commLoginRes.body.token;
   });
 
   afterAll(async () => {
@@ -93,6 +101,22 @@ describe('Engagements API', () => {
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  test('prevents commissioners from creating engagements', async () => {
+    const res = await request(app)
+      .post('/api/engagements')
+      .set('Authorization', `Bearer ${commissionerToken}`)
+      .send({
+        referenceNo: 'TEST-ENG-COMM-001',
+        purpose: 'Commissioner trying to create engagement',
+        date: new Date().toISOString().slice(0, 10),
+        time: '09:00:00',
+        commissionerId: commissioner.id,
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toHaveProperty('message', 'Forbidden');
   });
 });
 

@@ -18,15 +18,17 @@ const generateToken = (user, roleName) =>
     { expiresIn: '8h' }
   );
 
-const generateRefreshToken = (user, roleName) =>
-  jwt.sign(
+const generateRefreshToken = (user, roleName) => {
+  const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'change_me_refresh';
+  return jwt.sign(
     {
       id: user.id,
       role: roleName,
     },
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'change_me_refresh',
-    { expiresIn: '7d' }
+    refreshSecret,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
   );
+};
 
 const ensureRoleExists = async (roleName) => {
   const [role] = await Role.findOrCreate({
@@ -84,10 +86,8 @@ const login = async (email, password) => {
 
 const refresh = async (refreshToken) => {
   try {
-    const payload = jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'change_me_refresh'
-    );
+    const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'change_me_refresh';
+    const payload = jwt.verify(refreshToken, refreshSecret);
     const user = await User.findByPk(payload.id, { include: [Role] });
     if (!user) {
       const error = new Error('User not found');
@@ -109,5 +109,27 @@ const refresh = async (refreshToken) => {
   }
 };
 
-module.exports = { register, login, ensureRoleExists, refresh };
+const resetPassword = async (userId, newPassword) => {
+  const user = await User.findByPk(userId, { include: [Role] });
+  if (!user) {
+    const error = new Error('User not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (!newPassword || newPassword.length < 8) {
+    const error = new Error('Password must be at least 8 characters.');
+    error.status = 400;
+    throw error;
+  }
+
+  const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  user.password = hashed;
+  await user.save();
+  logger.info('Password reset for user: %s', user.email);
+
+  return { id: user.id };
+};
+
+module.exports = { register, login, ensureRoleExists, refresh, resetPassword };
 

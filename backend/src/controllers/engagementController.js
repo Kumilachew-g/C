@@ -24,10 +24,25 @@ const listEngagements = async (req, res, next) => {
 
 const updateStatus = async (req, res, next) => {
   try {
-    const { status } = req.body;
+    const { status, adminReason } = req.body;
     const engagement = await engagementService.updateEngagementStatus(
       req.params.id,
       status,
+      req.user,
+      adminReason
+    );
+    res.locals.entityId = engagement.id;
+    res.json(engagement);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateEngagement = async (req, res, next) => {
+  try {
+    const engagement = await engagementService.updateEngagement(
+      req.params.id,
+      req.body,
       req.user
     );
     res.locals.entityId = engagement.id;
@@ -37,5 +52,14 @@ const updateStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { createEngagement, listEngagements, updateStatus };
+const getEngagement = async (req, res, next) => {
+  try {
+    const engagement = await engagementService.getEngagement(req.params.id, req.user);
+    res.json(engagement);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createEngagement, listEngagements, updateStatus, updateEngagement, getEngagement };
 

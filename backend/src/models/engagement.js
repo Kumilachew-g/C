@@ -18,6 +18,10 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING(300),
         allowNull: false,
       },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       date: {
         type: DataTypes.DATEONLY,
         allowNull: false,
@@ -39,6 +43,11 @@ module.exports = (sequelize) =>
         type: DataTypes.UUID,
         allowNull: true,
       },
+      requestingUnitId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        comment: 'Department/Unit that requested this engagement',
+      },
     },
     {
       tableName: 'engagements',
@@ -49,6 +58,7 @@ module.exports = (sequelize) =>
         { fields: ['commissionerId'] },
         { fields: ['status'] },
         { fields: ['date'] },
+        { fields: ['requestingUnitId'] },
       ],
     }
   );

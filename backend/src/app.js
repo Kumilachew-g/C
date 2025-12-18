@@ -8,6 +8,7 @@ const userRoutes = require('./routes/userRoutes');
 const availabilityRoutes = require('./routes/availabilityRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const positionRoutes = require('./routes/positionRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
@@ -37,6 +38,7 @@ app.use('/api/availability', availabilityRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/departments', require('./routes/departmentRoutes'));
+app.use('/api/positions', positionRoutes);
 
 app.use(errorHandler);
 

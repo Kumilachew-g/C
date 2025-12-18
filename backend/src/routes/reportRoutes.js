@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const {
   getEngagementCountByCommissioner,
   getMonthlyEngagementSummary,
+  getEngagementStatusSummary,
   getAuditLogs,
 } = require('../controllers/reportController');
 const { ROLES } = require('../utils/roles');
@@ -15,6 +16,7 @@ const router = express.Router();
 router.use(authenticateToken, authorizeRoles(ROLES.ADMIN, ROLES.AUDITOR, ROLES.SECRETARIAT));
 
 router.get('/engagements/by-commissioner', getEngagementCountByCommissioner);
+router.get('/engagements/summary', getEngagementStatusSummary);
 
 router.get(
   '/engagements/monthly',

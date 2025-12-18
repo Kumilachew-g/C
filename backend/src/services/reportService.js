@@ -52,6 +52,34 @@ const monthlyEngagementSummary = async (year) => {
   }));
 };
 
+// Status-level summary for dashboards (e.g., auditor view)
+const engagementStatusSummary = async () => {
+  const rows = await Engagement.findAll({
+    attributes: ['status', [fn('COUNT', col('id')), 'count']],
+    group: ['status'],
+  });
+
+  const base = {
+    total: 0,
+    draft: 0,
+    scheduled: 0,
+    approved: 0,
+    completed: 0,
+    cancelled: 0,
+  };
+
+  rows.forEach((row) => {
+    const status = row.get('status');
+    const count = Number(row.get('count') || 0);
+    if (status && Object.prototype.hasOwnProperty.call(base, status)) {
+      base[status] = count;
+    }
+    base.total += count;
+  });
+
+  return base;
+};
+
 const auditLogs = async ({ limit = 100, userId }) => {
   const where = {};
   if (userId) where.userId = userId;
@@ -79,6 +107,7 @@ const auditLogs = async ({ limit = 100, userId }) => {
 module.exports = {
   engagementCountByCommissioner,
   monthlyEngagementSummary,
+  engagementStatusSummary,
   auditLogs,
 };
 

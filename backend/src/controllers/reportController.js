@@ -9,6 +9,15 @@ const getEngagementCountByCommissioner = async (_req, res, next) => {
   }
 };
 
+const getEngagementStatusSummary = async (_req, res, next) => {
+  try {
+    const data = await reportService.engagementStatusSummary();
+    res.json({ data, exportedAt: new Date().toISOString() });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getMonthlyEngagementSummary = async (req, res, next) => {
   try {
     const year = req.query.year ? Number(req.query.year) : undefined;
@@ -32,6 +41,7 @@ const getAuditLogs = async (req, res, next) => {
 module.exports = {
   getEngagementCountByCommissioner,
   getMonthlyEngagementSummary,
+  getEngagementStatusSummary,
   getAuditLogs,
 };
 

@@ -27,17 +27,25 @@ const Dashboard = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get<Engagement[]>('/engagements');
-      const engagementStats = {
-        total: data.length,
-        draft: data.filter(e => e.status === 'draft').length,
-        scheduled: data.filter(e => e.status === 'scheduled').length,
-        approved: data.filter(e => e.status === 'approved').length,
-        completed: data.filter(e => e.status === 'completed').length,
-        cancelled: data.filter(e => e.status === 'cancelled').length,
-      };
-      setStats(engagementStats);
-      setRecentEngagements(data.slice(0, 5));
+      // Auditors do not have direct access to individual engagements;
+      // use the reports API to get aggregate counts for their dashboard.
+      if (user?.role === 'auditor') {
+        const { data } = await api.get<{ data: typeof stats }>('/reports/engagements/summary');
+        setStats(data.data);
+        setRecentEngagements([]);
+      } else {
+        const { data } = await api.get<Engagement[]>('/engagements');
+        const engagementStats = {
+          total: data.length,
+          draft: data.filter(e => e.status === 'draft').length,
+          scheduled: data.filter(e => e.status === 'scheduled').length,
+          approved: data.filter(e => e.status === 'approved').length,
+          completed: data.filter(e => e.status === 'completed').length,
+          cancelled: data.filter(e => e.status === 'cancelled').length,
+        };
+        setStats(engagementStats);
+        setRecentEngagements(data.slice(0, 5));
+      }
     } catch (err: any) {
       console.error('Failed to load dashboard data:', err);
       // Error handling is done silently - user can retry with refresh button

@@ -123,9 +123,25 @@ const updateEngagementStatus = async (id, status, user, adminReason) => {
     throw error;
   }
 
-  // Admin and Secretariat can update the status of any engagement,
-  // but can only cancel with an explicit administrative reason.
+  // If there is no actual status change, just return the formatted engagement
+  if (status === engagement.status) {
+    return await formatEngagementWithDepartment(engagement);
+  }
+
+  // Admin and Secretariat:
+  // - Can schedule DRAFT engagements
+  // - Can administratively cancel DRAFT or SCHEDULED engagements (with reason)
+  // - Cannot mark engagements as APPROVED or COMPLETED (that is reserved for commissioners)
+  // - Cannot change status of COMPLETED engagements
+  // - Cannot move engagements back to DRAFT once they have been scheduled
   if (user.role === ROLES.ADMIN || user.role === ROLES.SECRETARIAT) {
+    // Never allow any changes once completed
+    if (engagement.status === 'completed') {
+      const error = new Error('Completed engagements cannot be modified.');
+      error.status = 400;
+      throw error;
+    }
+
     if (status === 'cancelled') {
       if (!adminReason || adminReason.trim().length < 10) {
         const error = new Error(
@@ -139,25 +155,133 @@ const updateEngagementStatus = async (id, status, user, adminReason) => {
         error.status = 400;
         return Promise.reject(error);
       }
+    } else if (status === 'scheduled') {
+      if (engagement.status !== 'draft') {
+        const error = new Error(
+          'Only draft engagements can be moved to scheduled by administrators or secretariat.'
+        );
+        error.status = 400;
+        throw error;
+      }
+    } else if (status === 'approved' || status === 'completed') {
+      const error = new Error('Only commissioners can approve or complete engagements.');
+      error.status = 400;
+      throw error;
+    } else if (status === 'draft' && engagement.status !== 'draft') {
+      const error = new Error('Engagements cannot be reverted back to draft once scheduled.');
+      error.status = 400;
+      throw error;
     }
   }
   // Commissioners can only update status for engagements assigned to them,
-  // and only from 'scheduled' → 'completed' or 'cancelled'
+  // and only through this flow:
+  // - scheduled → approved or cancelled
+  // - approved  → completed or cancelled
   else if (user.role === ROLES.COMMISSIONER) {
     if (engagement.commissionerId !== user.id) {
       const error = new Error('You can only update engagements assigned to you');
       error.status = 403;
       throw error;
     }
-    if (engagement.status !== 'scheduled') {
-      const error = new Error('You can only change the status of scheduled engagements');
+    // From scheduled: can only approve or cancel (not complete directly)
+    if (engagement.status === 'scheduled') {
+      if (!['approved', 'cancelled'].includes(status)) {
+        const error = new Error('From scheduled, commissioners can only approve or cancel.');
+        error.status = 400;
+        throw error;
+      }
+    }
+    // From approved: can only complete or cancel
+    else if (engagement.status === 'approved') {
+      if (!['completed', 'cancelled'].includes(status)) {
+        const error = new Error('From approved, commissioners can only complete or cancel.');
+        error.status = 400;
+        throw error;
+      }
+
+      // Only allow completion after the scheduled time has passed
+      if (status === 'completed') {
+        const engagementDateTime = new Date(`${engagement.date}T${engagement.time}`);
+        const now = new Date();
+        if (engagementDateTime > now) {
+          const error = new Error(
+            'You can only mark this engagement as completed after the scheduled time.'
+          );
+          error.status = 400;
+          throw error;
+        }
+      }
+    } else {
+      const error = new Error('You can only change the status of scheduled or approved engagements');
       error.status = 403;
       throw error;
     }
-    if (!['completed', 'cancelled'].includes(status)) {
-      const error = new Error('Commissioners can only mark engagements as completed or cancelled.');
+  }
+  // Department users can update the status of engagements they created:
+  // - From DRAFT → SCHEDULED (submitting the request)
+  // - From DRAFT/SCHEDULED → CANCELLED (self-cancellation)
+  // They cannot mark engagements as COMPLETED and cannot touch engagements they did not create.
+  else if (user.role === ROLES.DEPARTMENT_USER) {
+    if (engagement.createdBy !== user.id) {
+      const error = new Error('You can only update engagements you created.');
+      error.status = 403;
+      throw error;
+    }
+
+    // Completed or cancelled engagements are final for department users
+    if (engagement.status === 'completed' || engagement.status === 'cancelled') {
+      const error = new Error('You cannot modify completed or cancelled engagements.');
       error.status = 400;
       throw error;
+    }
+
+    if (status === 'completed') {
+      const error = new Error('Only commissioners can mark engagements as completed.');
+      error.status = 400;
+      throw error;
+    }
+
+    // From draft, they may go to scheduled or cancelled (never approved/completed)
+    if (engagement.status === 'draft') {
+      if (!['draft', 'scheduled', 'cancelled'].includes(status)) {
+        const error = new Error(
+          'Draft engagements created by you can only be scheduled or cancelled.'
+        );
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    // From scheduled, they may only cancel (cannot revert to draft or approve/complete)
+    if (engagement.status === 'scheduled') {
+      if (status !== 'cancelled' && status !== 'scheduled') {
+        const error = new Error('You can only cancel scheduled engagements you created.');
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    // Special rule: when a department user cancels their own engagement,
+    // we soft-delete it (paranoid delete) so it no longer appears in listings,
+    // while still being available in the database for audit purposes.
+    if (status === 'cancelled') {
+      const oldStatus = engagement.status;
+      const formattedEngagement = await formatEngagementWithDepartment(engagement);
+      await engagement.destroy(); // paranoid: true on model => soft delete
+
+      try {
+        await notificationService.notifyEngagementStatusChanged(
+          formattedEngagement,
+          oldStatus,
+          'cancelled',
+          user.id
+        );
+      } catch (error) {
+        // Don't fail cancellation if notification fails
+        console.error('Failed to send notification:', error);
+      }
+
+      return formattedEngagement;
     }
   } else {
     const error = new Error('Forbidden');

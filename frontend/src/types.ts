@@ -15,7 +15,7 @@ export type Engagement = {
   title?: string;
   purpose?: string;
   description?: string;
-  status: 'draft' | 'scheduled' | 'completed' | 'cancelled';
+  status: 'draft' | 'scheduled' | 'approved' | 'completed' | 'cancelled';
   scheduledAt?: string;
   date?: string;
   time?: string;

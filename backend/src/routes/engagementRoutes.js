@@ -37,11 +37,16 @@ router.get(
 
 router.patch(
   '/:id/status',
-  authorizeRoles(ROLES.ADMIN, ROLES.COMMISSIONER, ROLES.SECRETARIAT),
+  authorizeRoles(
+    ROLES.ADMIN,
+    ROLES.COMMISSIONER,
+    ROLES.SECRETARIAT,
+    ROLES.DEPARTMENT_USER
+  ),
   validate([
     param('id').isUUID().withMessage('id must be UUID'),
     body('status')
-      .isIn(['draft', 'scheduled', 'completed', 'cancelled'])
+      .isIn(['draft', 'scheduled', 'approved', 'completed', 'cancelled'])
       .withMessage('invalid status'),
     body('adminReason')
       .optional()

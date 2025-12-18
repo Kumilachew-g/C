@@ -12,6 +12,7 @@ const StatusBadge = ({ status, children }: Props) => {
 
   switch (status) {
     case 'scheduled':
+    case 'approved':
     case 'active':
       classes += ' border-emerald-500 bg-emerald-500/10 text-emerald-200';
       break;

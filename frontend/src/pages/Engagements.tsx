@@ -7,7 +7,7 @@ import type { Engagement } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { SkeletonCard } from '../components/SkeletonLoader';
 
-type StatusFilter = 'all' | 'draft' | 'scheduled' | 'completed' | 'cancelled';
+type StatusFilter = 'all' | 'draft' | 'scheduled' | 'approved' | 'completed' | 'cancelled';
 
 const Engagements = () => {
   const { user } = useAuth();
@@ -24,7 +24,10 @@ const Engagements = () => {
   const canEditEngagement = (eng: Engagement) => {
     if (user?.role === 'admin' || user?.role === 'secretariat') return true;
     if (user?.role === 'commissioner' && eng.commissionerId === user.id) return true;
-    if (user?.role === 'departmentUser' && eng.createdBy === user.id && eng.status === 'draft') return true;
+    // Department users can edit details of their own draft engagements
+    if (user?.role === 'departmentUser' && eng.createdBy === user.id && eng.status === 'draft') {
+      return true;
+    }
     return false;
   };
 
@@ -32,6 +35,7 @@ const Engagements = () => {
     switch (status) {
       case 'draft': return 'bg-slate-500/20 text-slate-300 border-slate-500';
       case 'scheduled': return 'bg-blue-500/20 text-blue-300 border-blue-500';
+      case 'approved': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500';
       case 'completed': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500';
       case 'cancelled': return 'bg-red-500/20 text-red-300 border-red-500';
       default: return 'bg-slate-500/20 text-slate-300 border-slate-500';
@@ -126,6 +130,7 @@ const Engagements = () => {
     all: engagements.length,
     draft: engagements.filter(e => e.status === 'draft').length,
     scheduled: engagements.filter(e => e.status === 'scheduled').length,
+    approved: engagements.filter(e => e.status === 'approved').length,
     completed: engagements.filter(e => e.status === 'completed').length,
     cancelled: engagements.filter(e => e.status === 'cancelled').length,
   };
@@ -176,7 +181,7 @@ const Engagements = () => {
 
         {/* Status Filters */}
         <div className="flex flex-wrap gap-2">
-          {(['all', 'draft', 'scheduled', 'completed', 'cancelled'] as StatusFilter[]).map((status) => (
+          {(['all', 'draft', 'scheduled', 'approved', 'completed', 'cancelled'] as StatusFilter[]).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -317,59 +322,192 @@ const Engagements = () => {
 
               {/* Actions Section */}
               <div className="flex items-center gap-2 pt-4 mt-auto border-t border-slate-800">
-                {/* Only Admin / Secretariat can schedule draft engagements */}
-                {eng.status === 'draft' && (user?.role === 'admin' || user?.role === 'secretariat') && (
-                  <button
-                    onClick={() => handleStatusChange(eng.id, 'scheduled')}
-                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
-                    title="Schedule this engagement"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    Schedule
-                  </button>
-                )}
-                {/* Commissioner can accept (complete) or reject (cancel) their scheduled engagements */}
-                {eng.status === 'scheduled' && user?.role === 'commissioner' && eng.commissionerId === user.id && (
+                {/* Admin / Secretariat can schedule draft engagements */}
+                {eng.status === 'draft' &&
+                  (user?.role === 'admin' || user?.role === 'secretariat') && (
+                    <button
+                      onClick={() => handleStatusChange(eng.id, 'scheduled')}
+                      className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                      title="Schedule this engagement"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      Schedule
+                    </button>
+                  )}
+
+                {/* Department users can manage the status of their own engagements:
+                    - Draft → Scheduled (submit request)
+                    - Draft/Scheduled → Cancelled (withdraw request)
+                */}
+                {eng.createdBy === user?.id && user?.role === 'departmentUser' && (
                   <>
-                    <button
-                      onClick={() => handleStatusChange(eng.id, 'completed')}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
-                      title="Mark this engagement as completed"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Complete
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(eng.id, 'cancelled')}
-                      className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
-                      title="Cancel this engagement"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Cancel
-                    </button>
+                    {eng.status === 'draft' && (
+                      <>
+                        <button
+                          onClick={() => handleStatusChange(eng.id, 'scheduled')}
+                          className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                          title="Submit this engagement for scheduling"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                          Submit Request
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(eng.id, 'cancelled')}
+                          className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 rounded-lg text-sm font-semibold text-slate-200 border border-slate-700 transition-colors flex items-center justify-center gap-2"
+                          title="Cancel this draft engagement"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                          Discard
+                        </button>
+                      </>
+                    )}
+                    {eng.status === 'scheduled' && (
+                      <button
+                        onClick={() => handleStatusChange(eng.id, 'cancelled')}
+                        className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                        title="Cancel this scheduled engagement you requested"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                        Cancel Request
+                      </button>
+                    )}
                   </>
                 )}
-                {/* Admin / Secretariat can adjust status, but must use a special action to cancel */}
+                {/* Commissioner flow:
+                    - Scheduled → Approve or Cancel
+                    - Approved  → Complete or Cancel
+                */}
+                {user?.role === 'commissioner' && eng.commissionerId === user.id && (
+                  <>
+                    {eng.status === 'scheduled' && (
+                      <>
+                        <button
+                          onClick={() => handleStatusChange(eng.id, 'approved')}
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                          title="Approve this engagement (confirm you will attend)"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(eng.id, 'cancelled')}
+                          className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                          title="Cancel this engagement"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                    {eng.status === 'approved' && (
+                      <>
+                        <button
+                          onClick={() => handleStatusChange(eng.id, 'completed')}
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                          title="Mark this engagement as completed after the session"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Complete
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(eng.id, 'cancelled')}
+                          className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                          title="Cancel this engagement"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+                {/* Admin / Secretariat can adjust status within strict rules:
+                    - Draft → Scheduled
+                    - Draft/Scheduled → Cancelled (via Admin cancel with reason)
+                    They cannot mark engagements as completed and cannot revert from scheduled back to draft.
+                */}
                 {(user?.role === 'admin' || user?.role === 'secretariat') &&
                   eng.status !== 'completed' &&
                   eng.status !== 'cancelled' && (
                     <>
-                      <select
-                        value={eng.status}
-                        onChange={(e) => handleStatusChange(eng.id, e.target.value)}
-                        className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        title="Change engagement status"
-                      >
-                        <option value="draft">Draft</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="completed">Completed</option>
-                      </select>
+                      {/* Status dropdown only offers valid transitions for the current state */}
+                      {(() => {
+                        const options =
+                          eng.status === 'draft'
+                            ? ['draft', 'scheduled']
+                            : eng.status === 'scheduled'
+                            ? ['scheduled']
+                            : [];
+
+                        if (!options.length) return null;
+
+                        return (
+                          <select
+                            value={eng.status}
+                            onChange={(e) => handleStatusChange(eng.id, e.target.value)}
+                            className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            title="Change engagement status"
+                          >
+                            {options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
+
                       <button
                         onClick={() => handleAdminCancel(eng)}
                         className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-xs font-semibold text-white transition-colors"

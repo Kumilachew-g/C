@@ -32,7 +32,7 @@ const EngagementCard = ({ engagement, onStatusChange, showActions }: Props) => {
         <span>Scheduled: {dateTimeLabel}</span>
         {showActions && onStatusChange && (
           <div className="flex flex-wrap gap-1">
-            {['draft', 'scheduled', 'completed', 'cancelled'].map((s) => (
+            {['draft', 'scheduled', 'approved', 'completed', 'cancelled'].map((s) => (
               <button
                 key={s}
                 onClick={() => onStatusChange(s as Engagement['status'])}

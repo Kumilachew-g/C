@@ -31,7 +31,10 @@ module.exports = (sequelize) =>
         allowNull: false,
       },
       status: {
-        type: DataTypes.ENUM('draft', 'scheduled', 'completed', 'cancelled'),
+        // Status flow:
+        // draft -> scheduled -> approved -> completed
+        // Any non-final status can also go to cancelled (with role-specific rules)
+        type: DataTypes.ENUM('draft', 'scheduled', 'approved', 'completed', 'cancelled'),
         allowNull: false,
         defaultValue: 'draft',
       },

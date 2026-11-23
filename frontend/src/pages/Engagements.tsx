@@ -126,6 +126,18 @@ const Engagements = () => {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this engagement? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await api.delete(`/engagements/${id}`);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to delete engagement');
+    }
+  };
+
   const statusCounts = {
     all: engagements.length,
     draft: engagements.filter(e => e.status === 'draft').length,
@@ -524,7 +536,21 @@ const Engagements = () => {
                 )}
                 {eng.status === 'cancelled' && (
                   <div className="flex-1 px-4 py-2.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm font-medium text-red-300 text-center">
-                    Engagement Cancelled
+                    <div>Engagement Cancelled</div>
+                    {eng.cancelledByUser && (
+                      <p className="mt-1 text-xs text-red-200">
+                        Cancelled by {eng.cancelledByUser.fullName}
+                      </p>
+                    )}
+                    {eng.createdBy === user?.id && user?.role === 'departmentUser' && (
+                      <button
+                        onClick={() => handleDelete(eng.id)}
+                        className="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-xs font-semibold text-slate-100 border border-slate-700 transition-colors"
+                        title="Delete this cancelled engagement"
+                      >
+                        Delete engagement
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

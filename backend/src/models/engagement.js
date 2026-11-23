@@ -51,6 +51,16 @@ module.exports = (sequelize) =>
         allowNull: true,
         comment: 'Department/Unit that requested this engagement',
       },
+      cancelledBy: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        comment: 'User who last cancelled this engagement',
+      },
+      cancelledAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Timestamp when engagement was last cancelled',
+      },
     },
     {
       tableName: 'engagements',

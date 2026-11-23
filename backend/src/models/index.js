@@ -39,6 +39,9 @@ Engagement.belongsTo(User, { foreignKey: 'createdBy', as: 'Creator' });
 User.hasMany(Engagement, { foreignKey: 'commissionerId', as: 'CommissionerEngagements' });
 Engagement.belongsTo(User, { foreignKey: 'commissionerId', as: 'Commissioner' });
 
+User.hasMany(Engagement, { foreignKey: 'cancelledBy', as: 'CancelledEngagements' });
+Engagement.belongsTo(User, { foreignKey: 'cancelledBy', as: 'CancelledBy' });
+
 User.hasMany(AuditLog, { foreignKey: 'userId' });
 AuditLog.belongsTo(User, { foreignKey: 'userId' });
 

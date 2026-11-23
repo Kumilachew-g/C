@@ -3,7 +3,14 @@ const { body, param } = require('express-validator');
 const auth = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 const auditLogger = require('../middleware/auditLogger');
-const { createEngagement, listEngagements, updateStatus, updateEngagement, getEngagement } = require('../controllers/engagementController');
+const {
+  createEngagement,
+  listEngagements,
+  updateStatus,
+  updateEngagement,
+  getEngagement,
+  deleteEngagement,
+} = require('../controllers/engagementController');
 const { ROLES } = require('../utils/roles');
 const validate = require('../middleware/validate');
 
@@ -73,6 +80,14 @@ router.patch(
   ]),
   auditLogger('UPDATE_ENGAGEMENT', 'Engagement'),
   updateEngagement
+);
+
+router.delete(
+  '/:id',
+  authorizeRoles(ROLES.ADMIN, ROLES.SECRETARIAT, ROLES.DEPARTMENT_USER),
+  validate([param('id').isUUID().withMessage('id must be UUID')]),
+  auditLogger('DELETE_ENGAGEMENT', 'Engagement'),
+  deleteEngagement
 );
 
 module.exports = router;

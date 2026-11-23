@@ -27,6 +27,13 @@ export type Engagement = {
     id: string;
     name: string;
   };
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+  cancelledByUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
 };
 
 export type Notification = {

@@ -1,13 +1,13 @@
-const { Engagement, Department } = require('../models');
+const { Engagement, Department, User, Role } = require('../models');
 const availabilityService = require('./availabilityService');
 const notificationService = require('./notificationService');
 const { ROLES } = require('../utils/roles');
 
-// Helper function to format engagement with department information
+// Helper function to format engagement with department and cancellation information
 const formatEngagementWithDepartment = async (engagement) => {
   if (!engagement) return null;
   
-  // Reload with department if not already included
+  // Reload with department and cancelledBy user if not already included
   if (!engagement.RequestingUnit && engagement.requestingUnitId) {
     const engagementWithDept = await Engagement.findByPk(engagement.id, {
       include: [
@@ -15,6 +15,12 @@ const formatEngagementWithDepartment = async (engagement) => {
           model: Department,
           as: 'RequestingUnit',
           attributes: ['id', 'name'],
+          required: false,
+        },
+        {
+          model: User,
+          as: 'CancelledBy',
+          attributes: ['id', 'fullName', 'email'],
           required: false,
         },
       ],
@@ -31,6 +37,13 @@ const formatEngagementWithDepartment = async (engagement) => {
       id: engagementData.RequestingUnit.id,
       name: engagementData.RequestingUnit.name,
     } : null,
+    cancelledByUser: engagementData.CancelledBy
+      ? {
+          id: engagementData.CancelledBy.id,
+          fullName: engagementData.CancelledBy.fullName,
+          email: engagementData.CancelledBy.email,
+        }
+      : null,
   };
 };
 
@@ -89,6 +102,12 @@ const listEngagements = async (user) => {
         attributes: ['id', 'name'],
         required: false,
       },
+      {
+        model: User,
+        as: 'CancelledBy',
+        attributes: ['id', 'fullName', 'email'],
+        required: false,
+      },
     ],
     order: [['createdAt', 'DESC']],
   });
@@ -102,6 +121,13 @@ const listEngagements = async (user) => {
         id: engagementData.RequestingUnit.id,
         name: engagementData.RequestingUnit.name,
       } : null,
+      cancelledByUser: engagementData.CancelledBy
+        ? {
+            id: engagementData.CancelledBy.id,
+            fullName: engagementData.CancelledBy.fullName,
+            email: engagementData.CancelledBy.email,
+          }
+        : null,
     };
   });
 };
@@ -113,6 +139,12 @@ const updateEngagementStatus = async (id, status, user, adminReason) => {
         model: Department,
         as: 'RequestingUnit',
         attributes: ['id', 'name'],
+        required: false,
+      },
+      {
+        model: User,
+        as: 'CancelledBy',
+        attributes: ['id', 'fullName', 'email'],
         required: false,
       },
     ],
@@ -266,6 +298,8 @@ const updateEngagementStatus = async (id, status, user, adminReason) => {
     // while still being available in the database for audit purposes.
     if (status === 'cancelled') {
       const oldStatus = engagement.status;
+      engagement.cancelledBy = user.id;
+      engagement.cancelledAt = new Date();
       const formattedEngagement = await formatEngagementWithDepartment(engagement);
       await engagement.destroy(); // paranoid: true on model => soft delete
 
@@ -304,6 +338,13 @@ const updateEngagementStatus = async (id, status, user, adminReason) => {
 
   const oldStatus = engagement.status;
   engagement.status = status;
+
+  // Track who cancelled and when, for all cancellation flows
+  if (status === 'cancelled') {
+    engagement.cancelledBy = user.id;
+    engagement.cancelledAt = new Date();
+  }
+
   await engagement.save();
   
   const formattedEngagement = await formatEngagementWithDepartment(engagement);
@@ -416,6 +457,12 @@ const getEngagement = async (id, user) => {
         attributes: ['id', 'name'],
         required: false,
       },
+      {
+        model: User,
+        as: 'CancelledBy',
+        attributes: ['id', 'fullName', 'email'],
+        required: false,
+      },
     ],
   });
   if (!engagement) {
@@ -442,11 +489,70 @@ const getEngagement = async (id, user) => {
   return await formatEngagementWithDepartment(engagement);
 };
 
+const deleteEngagement = async (id, user) => {
+  const engagement = await Engagement.findByPk(id, {
+    include: [
+      {
+        model: User,
+        as: 'CancelledBy',
+        attributes: ['id', 'fullName', 'email', 'roleId'],
+        include: [{ model: Role, attributes: ['name'] }],
+        required: false,
+      },
+    ],
+  });
+
+  if (!engagement) {
+    const error = new Error('Engagement not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (engagement.status !== 'cancelled') {
+    const error = new Error('Only cancelled engagements can be deleted');
+    error.status = 400;
+    throw error;
+  }
+
+  // Admin/Secretariat: allow deleting cancelled engagements
+  if (user.role === ROLES.ADMIN || user.role === ROLES.SECRETARIAT) {
+    await engagement.destroy();
+    return { success: true };
+  }
+
+  // Department user: only their own engagement, and only if cancelled by a commissioner
+  if (user.role === ROLES.DEPARTMENT_USER) {
+    if (engagement.createdBy !== user.id) {
+      const error = new Error('You can only delete engagements you created.');
+      error.status = 403;
+      throw error;
+    }
+    if (!engagement.cancelledBy || !engagement.CancelledBy || !engagement.CancelledBy.Role) {
+      const error = new Error('This engagement was not cancelled by a commissioner.');
+      error.status = 400;
+      throw error;
+    }
+    const cancelledByRoleName = engagement.CancelledBy.Role.name;
+    if (cancelledByRoleName !== ROLES.COMMISSIONER) {
+      const error = new Error('Only commissioner-cancelled engagements can be deleted by the requester.');
+      error.status = 403;
+      throw error;
+    }
+    await engagement.destroy();
+    return { success: true };
+  }
+
+  const error = new Error('Forbidden');
+  error.status = 403;
+  throw error;
+};
+
 module.exports = {
   createEngagement,
   listEngagements,
   updateEngagementStatus,
   updateEngagement,
+  deleteEngagement,
   getEngagement,
 };
 

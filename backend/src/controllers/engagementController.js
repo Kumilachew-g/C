@@ -61,5 +61,21 @@ const getEngagement = async (req, res, next) => {
   }
 };
 
-module.exports = { createEngagement, listEngagements, updateStatus, updateEngagement, getEngagement };
+const deleteEngagement = async (req, res, next) => {
+  try {
+    await engagementService.deleteEngagement(req.params.id, req.user);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createEngagement,
+  listEngagements,
+  updateStatus,
+  updateEngagement,
+  getEngagement,
+  deleteEngagement,
+};
 
